@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Sheet Scribe — Shadowdark → Markdown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#15110c; --ink-2:#1d1710; --ink-3:#271f16; --ink-4:#322618;
+    --parch:#e9ddc4; --parch-dim:#b3a582; --parch-faint:#7d715a;
+    --ember:#d07a30; --ember-hi:#e89a51; --gold:#c7a55c; --blood:#9a3b2e;
+    --line:#3a2e1f; --line-2:#4a3a26;
+    --ok:#7c9a5e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #241a10 0%, rgba(36,26,16,0) 60%),
+      var(--ink);
+    color:var(--parch);
+    font-family:"EB Garamond",Georgia,serif;
+    font-size:17px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height:100vh;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:22px 16px 64px}
+
+  /* Header */
+  header{position:relative;padding:14px 0 18px;margin-bottom:16px}
+  .rule{height:2px;border:0;margin:0 0 16px;
+    background:linear-gradient(90deg,transparent,var(--ember) 20%,var(--gold) 50%,var(--ember) 80%,transparent);
+    box-shadow:0 0 14px rgba(208,122,48,.45);}
+  @media (prefers-reduced-motion:no-preference){
+    .rule{animation:emberpulse 5s ease-in-out infinite}
+    @keyframes emberpulse{0%,100%{opacity:.85;box-shadow:0 0 10px rgba(208,122,48,.3)}50%{opacity:1;box-shadow:0 0 18px rgba(208,122,48,.55)}}
+  }
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  h1{font-family:"Cinzel",serif;font-weight:700;letter-spacing:.06em;
+    font-size:clamp(26px,6vw,38px);margin:0;color:var(--parch);
+    text-shadow:0 1px 0 #000, 0 0 22px rgba(199,165,92,.18);}
+  h1 .amp{color:var(--ember)}
+  .tag{font-style:italic;color:var(--parch-dim);font-size:15px}
+  .sub{margin:8px 0 0;color:var(--parch-faint);font-size:14.5px;max-width:60ch}
+
+  /* Tabs */
+  .tabs{display:flex;gap:6px;margin:18px 0 14px;flex-wrap:wrap}
+  .tab{
+    flex:1 1 auto;min-width:96px;cursor:pointer;
+    font-family:"Cinzel",serif;font-weight:600;letter-spacing:.08em;
+    font-size:12.5px;text-transform:uppercase;
+    color:var(--parch-dim);background:var(--ink-2);
+    border:1px solid var(--line);border-radius:8px;
+    padding:11px 10px;text-align:center;transition:all .15s;
+  }
+  .tab:hover{color:var(--parch);border-color:var(--line-2)}
+  .tab[aria-selected="true"]{
+    color:var(--ink);background:linear-gradient(180deg,var(--ember-hi),var(--ember));
+    border-color:var(--ember);box-shadow:0 0 16px rgba(208,122,48,.3);
+  }
+
+  /* Panels */
+  .panel{background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+  label.eyebrow{display:block;font-family:"Cinzel",serif;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--gold);margin:0 0 8px}
+  .hint{color:var(--parch-faint);font-size:13.5px;margin:2px 0 12px;font-style:italic}
+
+  textarea,input[type=text]{
+    width:100%;background:var(--ink);color:var(--parch);
+    border:1px solid var(--line);border-radius:8px;padding:12px;
+    font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13px;line-height:1.55;
+    resize:vertical;
+  }
+  textarea:focus,input:focus{outline:2px solid var(--ember);outline-offset:1px;border-color:var(--ember)}
+  .in-json textarea,.in-text textarea{min-height:150px}
+
+  .drop{
+    border:1.5px dashed var(--line-2);border-radius:10px;padding:26px 16px;text-align:center;
+    color:var(--parch-dim);background:var(--ink);cursor:pointer;transition:all .15s;
+  }
+  .drop:hover,.drop.over{border-color:var(--ember);color:var(--parch);background:var(--ink-3)}
+  .drop b{color:var(--ember)}
+  .drop small{display:block;margin-top:6px;color:var(--parch-faint);font-size:12.5px}
+  input[type=file]{display:none}
+  .filename{margin-top:10px;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--gold)}
+
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+  .toggle{display:flex;align-items:center;gap:8px;color:var(--parch-dim);font-size:14.5px;cursor:pointer;user-select:none}
+  .toggle input{width:16px;height:16px;accent-color:var(--ember)}
+
+  button.act{
+    font-family:"Cinzel",serif;font-weight:600;letter-spacing:.06em;font-size:14px;
+    cursor:pointer;border-radius:9px;padding:12px 18px;border:1px solid var(--ember);
+    background:linear-gradient(180deg,var(--ember-hi),var(--ember));color:#1a1206;
+    transition:transform .08s, filter .15s;
+  }
+  button.act:hover{filter:brightness(1.06)}
+  button.act:active{transform:translateY(1px)}
+  button.ghost{background:var(--ink-3);color:var(--parch);border-color:var(--line-2)}
+  button.ghost:hover{border-color:var(--ember);color:var(--parch)}
+  button:disabled{opacity:.45;cursor:not-allowed;filter:none}
+
+  /* Output */
+  .out-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .out-actions{display:flex;gap:8px;flex-wrap:wrap}
+  #out{min-height:320px;width:100%}
+  .status{font-size:13.5px;min-height:20px;margin-top:8px;font-style:italic}
+  .status.ok{color:var(--ok)} .status.warn{color:var(--ember-hi)} .status.err{color:#d98a7e}
+
+  .notes{font-size:13.5px;color:var(--parch-faint);border-top:1px solid var(--line);margin-top:20px;padding-top:14px}
+  .notes b{color:var(--parch-dim)}
+  .foot{text-align:center;color:var(--parch-faint);font-size:12.5px;margin-top:26px;font-style:italic}
+  a{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <hr class="rule">
+    <div class="brand">
+      <h1>Sheet Scribe</h1>
+      <span class="tag">Shadowdark <span style="color:var(--ember)">&rarr;</span> Obsidian Markdown</span>
+    </div>
+    <p class="sub">Drop a Shadowdarkling export, a PDF, or pasted text. Out comes a note in your SoloDark character template — frontmatter, ability mods, talents with their details, gear-slot table, spells, and a solo-play behavior scaffold ready to fill.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Input type">
+    <div class="tab" role="tab" data-mode="json" aria-selected="true" tabindex="0">Shadowdarkling JSON</div>
+    <div class="tab" role="tab" data-mode="pdf" aria-selected="false" tabindex="0">PDF sheet</div>
+    <div class="tab" role="tab" data-mode="text" aria-selected="false" tabindex="0">Plain text</div>
+  </div>
+
+  <!-- JSON -->
+  <section class="panel in-json" data-pane="json">
+    <label class="eyebrow" for="jsonIn">Paste JSON, or load a .json file</label>
+    <p class="hint">On shadowdarklings.net use “Copy” / “Save as JSON”. This path is exact — every field maps straight across.</p>
+    <textarea id="jsonIn" placeholder='{ "name": "Ulfgar", "ancestry": "Dwarf", "class": "...", "stats": { ... }, ... }'></textarea>
+    <div class="drop" id="jsonDrop">Tap to choose a <b>.json</b> file<small>or drag it here</small>
+      <input type="file" id="jsonFile" accept=".json,application/json">
+      <div class="filename" id="jsonName"></div>
+    </div>
+  </section>
+
+  <!-- PDF -->
+  <section class="panel in-pdf" data-pane="pdf" hidden>
+    <label class="eyebrow">Load a PDF character sheet</label>
+    <p class="hint">Works on PDFs with selectable text (Shadowdarkling PDF export, most generators). Scanned/flattened images can’t be read here. PDF/text are a best-effort draft — check it against the sheet before saving.</p>
+    <div class="drop" id="pdfDrop">Tap to choose a <b>.pdf</b> file<small>or drag it here</small>
+      <input type="file" id="pdfFile" accept=".pdf,application/pdf">
+      <div class="filename" id="pdfName"></div>
+    </div>
+    <details style="margin-top:12px">
+      <summary style="cursor:pointer;color:var(--parch-dim);font-size:13.5px">Extracted text (edit before converting)</summary>
+      <textarea id="pdfText" style="margin-top:8px;min-height:130px" placeholder="Extracted PDF text appears here…"></textarea>
+    </details>
+  </section>
+
+  <!-- TEXT -->
+  <section class="panel in-text" data-pane="text" hidden>
+    <label class="eyebrow" for="textIn">Paste sheet text</label>
+    <p class="hint">Anything with labels like “Ancestry: …”, “STR 13”, “AC 14” and section headers (Talents / Gear / Spells). Best-effort — you’ll edit the result.</p>
+    <textarea id="textIn" placeholder="Ulfgar&#10;Ancestry: Dwarf   Class: Seawolf   Level: 2&#10;STR 13  DEX 12  CON 11  INT 9  WIS 8  CHA 11&#10;AC 14   HP 14   XP 15&#10;&#10;Talents&#10;- Seafarer — advantage on boat-related rolls&#10;&#10;Gear&#10;- Leather armor&#10;- Shield"></textarea>
+  </section>
+
+  <div class="row">
+    <button class="act" id="convertBtn">Scribe the note</button>
+    <button class="act ghost" id="aiBtn" title="Uses Claude to clean up messy PDF/text. Works inside claude.ai.">Refine with AI</button>
+    <label class="toggle"><input type="checkbox" id="behaviorChk" checked> Include solo-play behavior scaffold</label>
+  </div>
+  <div class="status" id="status"></div>
+
+  <!-- OUTPUT -->
+  <section class="panel" style="margin-top:16px">
+    <div class="out-head">
+      <label class="eyebrow" style="margin:0">Markdown output</label>
+      <div class="out-actions">
+        <button class="act ghost" id="copyBtn">Copy</button>
+        <button class="act ghost" id="dlBtn">Download .md</button>
+      </div>
+    </div>
+    <textarea id="out" spellcheck="false" placeholder="Your character note will appear here — fully editable before you copy or download."></textarea>
+  </section>
+
+  <div class="notes">
+    <b>What carries across exactly (JSON):</b> name, ancestry, class, level, title, alignment, background, deity, AC, HP, all six stats + computed mods, XP, gold, gear-slot table, spells, languages, ancestry talent, and every rolled talent with its description.<br>
+    <b>What it can’t know:</b> a class’s <i>fixed</i> features (e.g. a third-party Seawolf’s Shield Wall) aren’t in the export — add those in the Talents block. Magic weapon bonuses and portrait filename are left as editable stubs. Roleplay/behavior text is a blank scaffold in your format.
+  </div>
+  <div class="foot">Single file. Save it to your GitHub Pages repo and add to your Home Screen, same as HENCHMAN. No data leaves your device on the JSON/PDF/text paths.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+/* ============ reference data ============ */
+const MOD = s => { s=+s||10; return s<=3?-4:s<=5?-3:s<=7?-2:s<=9?-1:s<=11?0:s<=13?1:s<=15?2:s<=17?3:4; };
+const SIGN = n => (n>=0?"+"+n:""+n);
+const ANCESTRY_ABILITY = {
+  Dwarf:"**Stout** — Start with +2 HP. Roll hit points with advantage.",
+  Elf:"**Farsight** — +1 to a ranged attack or spellcasting check (choose one).",
+  Goblin:"**Keen Senses** — You can't be surprised.",
+  "Half-Orc":"**Mighty** — +1 to attack and damage rolls with melee weapons.",
+  Halfling:"**Stealthy** — Once per day, become invisible for 3 rounds.",
+  Human:"**Ambitious** — Gain one additional talent roll at 1st level."
+};
+const WEAPON_DMG = {dagger:"1d4",club:"1d4",crossbow:"1d6",javelin:"1d4",mace:"1d6",shortbow:"1d4",
+  shortsword:"1d6",spear:"1d6",staff:"1d4",warhammer:"1d10","bastard sword":"1d8/1d10",battleaxe:"1d8",
+  greataxe:"1d10","great axe":"1d10",greatsword:"1d12",longbow:"1d8",longsword:"1d8",scimitar:"1d6",
+  handaxe:"1d6",pike:"1d10",sling:"1d4",flail:"1d8",morningstar:"1d8"};
+const RANGED = new Set(["shortbow","longbow","crossbow","sling"]);
+
+function humanize(c){ if(!c) return c;
+  return c.replace(/Plus(\d+)/g,"+$1 ").replace(/Or/g," or ").replace(/To(?=[A-Z])/g," to ")
+          .replace(/([a-z])([A-Z])/g,"$1 $2").replace(/([A-Z]{2,})(\d)/g,"$1 $2")
+          .replace(/\s+/g," ").trim(); }
+function tc(x){ return String(x).trim().split(/\s+/).map(w=>/^[A-Z0-9']{2,}$/.test(w)?w[0]+w.slice(1).toLowerCase():w).join(" "); }
+function fmtAttacks(m,s){
+  if(m.attacks&&m.attacks.length){
+    return m.attacks.map(a=>{
+      let w=a.match(/^(.+?):\s*([+\-]\d+)\s*,\s*(1d\d+.*)$/i);
+      if(w) return `- ${tc(w[1])} ${w[2]} — ${w[3].trim()}`;
+      let o=a.match(/^(.+?):\s*(.+)$/);
+      if(o) return `- **${tc(o[1])}** — ${o[2].trim()}`;
+      return `- ${a}`;
+    }).join("\n");
+  }
+  return m.weapons.length? m.weapons.map(w=>`- ${w.name} ${SIGN(MOD(w.stat==="DEX"?s.DEX:s.STR))} — ${w.dmg}`).join("\n") : "- —";
+}
+function meleeFrontmatter(m){
+  const wa=(m.attacks||[]).map(a=>a.match(/^(.+?):\s*([+\-]\d+)\s*,\s*1d/i)).find(Boolean);
+  if(wa) return `${wa[2]} ${tc(wa[1])}`;
+  const p=m.weapons.find(w=>!RANGED.has(w.name.toLowerCase()))||m.weapons[0];
+  return p?p.name:"";
+}
+function wLine(name){ const key=String(name).toLowerCase().replace(/\s*\+\d+/,"").trim();
+  return {name, dmg:WEAPON_DMG[key]||"1d?", stat:RANGED.has(key)?"DEX":"STR"}; }
+
+/* ============ normalize: JSON ============ */
+function fromJSON(j){
+  const s=j.stats||{};
+  const m={ name:j.name||"Unnamed", ancestry:j.ancestry||"", cls:j.class||"", level:j.level??"",
+    title:j.title||"", alignment:j.alignment||"", background:j.background||"", deity:j.deity||"",
+    ac:j.armorClass??"", hp:j.maxHitPoints??"", xp:j.XP??0, gearSlots:j.gearSlotsTotal||20,
+    gold:(j.gold!==undefined?j.gold:""), stats:{STR:s.STR,DEX:s.DEX,CON:s.CON,INT:s.INT,WIS:s.WIS,CHA:s.CHA},
+    weapons:[], talents:[], spells:[], languages:[], gearFilled:[] };
+
+  m.weapons=(j.gear||[]).filter(g=>g.type==="weapon").map(g=>wLine(g.name));
+
+  if(ANCESTRY_ABILITY[j.ancestry]) m.talents.push(ANCESTRY_ABILITY[j.ancestry]);
+  const seen=new Set();
+  const pushT=(nm,de)=>{ if(nm&&!seen.has(nm)){seen.add(nm); m.talents.push(`**${humanize(nm)}**${de?` — ${de}`:""}`);} };
+  (j.levels||[]).forEach(l=>pushT(l.Rolled12ChosenTalentName||l.talentRolledName, l.Rolled12ChosenTalentDesc||l.talentRolledDesc));
+  if(j.ambitionTalentLevel){const l=j.ambitionTalentLevel; pushT(l.Rolled12ChosenTalentName||l.talentRolledName, l.Rolled12ChosenTalentDesc||l.talentRolledDesc);}
+  (j.bonuses||[]).filter(b=>b.sourceCategory==="Talent").forEach(b=>pushT(b.bonusName));
+
+  if(j.spellsKnown) m.spells=j.spellsKnown.split(",").map(x=>x.trim()).filter(x=>x&&!/^none$/i.test(x));
+  else m.spells=(j.bonuses||[]).filter(b=>/^Spell:/.test(b.name||"")).map(b=>b.bonusName).filter(Boolean);
+  m.attacks=Array.isArray(j.attacks)?j.attacks.slice():[];
+
+  m.languages=(j.languages||"").split(",").map(x=>x.trim()).filter(Boolean);
+
+  (j.gear||[]).forEach(g=>{ const n=g.slots||0;
+    if(n===0) m.gearFilled.push(g.name+" (free)");
+    else for(let i=0;i<n;i++) m.gearFilled.push(g.name); });
+  return m;
+}
+
+/* ============ normalize: text/PDF (best effort) ============ */
+function fromText(text){
+  const lines=text.split(/\r?\n/);
+  const grab=re=>{const mm=text.match(re);return mm?mm[1].trim():"";};
+  const stat=k=>{const mm=text.match(new RegExp(k+"\\s*[:=]?\\s*(\\d{1,2})","i"));return mm?+mm[1]:undefined;};
+  const m={ name:"", ancestry:grab(/ancestry\s*[:=]\s*([A-Za-z-]+)/i), cls:grab(/class\s*[:=]\s*([A-Za-z ]+?)(?:\s{2,}|\n|$)/i),
+    level:grab(/level\s*[:=]?\s*(\d+)/i), title:grab(/title\s*[:=]\s*([A-Za-z ]+?)(?:\s{2,}|\n|$)/i),
+    alignment:grab(/align(?:ment)?\s*[:=]\s*([A-Za-z]+)/i), background:grab(/background\s*[:=]\s*([A-Za-z ]+?)(?:\s{2,}|\n|$)/i),
+    deity:grab(/deity\s*[:=]\s*([A-Za-z ]+?)(?:\s{2,}|\n|$)/i),
+    ac:grab(/(?:^|\b)(?:AC|armor class)\s*[:=]?\s*(\d{1,2})/i), hp:grab(/(?:^|\b)HP\s*[:=]?\s*(\d{1,3})/i),
+    xp:grab(/(?:^|\b)XP\s*[:=]?\s*(\d{1,4})/i)||0, gearSlots:20, gold:grab(/(?:GP|gold)\s*[:=]?\s*(\d+)/i),
+    stats:{STR:stat("STR"),DEX:stat("DEX"),CON:stat("CON"),INT:stat("INT"),WIS:stat("WIS"),CHA:stat("CHA")},
+    weapons:[], talents:[], spells:[], languages:[], gearFilled:[] };
+  // name = first meaningful line without a colon
+  for(const ln of lines){const t=ln.trim(); if(t && !/[:=]/.test(t) && !/^(str|dex|con|int|wis|cha)/i.test(t)){m.name=t;break;}}
+  if(!m.name) m.name="Unnamed";
+
+  // sections
+  const section=(labels)=>{
+    const re=new RegExp("^\\s*(?:#+\\s*)?(?:"+labels+")\\s*:?\\s*$","i");
+    let out=[],cap=false;
+    for(const ln of lines){
+      if(re.test(ln)){cap=true;continue;}
+      if(cap){ if(/^\s*(?:#+\s*)?[A-Z][A-Za-z /]{2,}\s*:?\s*$/.test(ln) && ln.trim().split(" ").length<=3 && !/^[-*•]/.test(ln.trim())){cap=false;continue;}
+        const t=ln.replace(/^[-*•]\s*/,"").trim(); if(t) out.push(t); }
+    }
+    return out;
+  };
+  m.talents=section("talents|abilities|features").map(t=>/\*\*/.test(t)?t:("**"+t.replace(/\s+—.*/,"")+"**"+(t.includes("—")?" — "+t.split("—").slice(1).join("—").trim():"")));
+  m.spells=section("spells|spells known");
+  m.languages=section("languages").flatMap(x=>x.split(/,\s*/));
+  const gear=section("gear|equipment|inventory|items");
+  gear.forEach(g=>m.gearFilled.push(g));
+  m.weapons=gear.filter(g=>WEAPON_DMG[g.toLowerCase().replace(/\s*\+\d+/,"").trim()]).map(wLine);
+  return m;
+}
+
+/* ============ render model -> markdown ============ */
+function render(m, opts){
+  opts=Object.assign({behavior:true,date:new Date().toISOString().slice(0,10)},opts);
+  const s=m.stats||{}, ord=["STR","DEX","CON","INT","WIS","CHA"];
+
+  const fm=["---","type: character",`ancestry: ${m.ancestry}`,`class: ${m.cls}`,`level: ${m.level}`,
+    `title: ${m.title}`,`alignment: ${m.alignment}`,`background: ${m.background}`,`deity: ${m.deity}`,
+    `ac: ${m.ac}`,`hp: ${m.hp}`,`hp_max: ${m.hp}`,`hitdie: ""`,
+    `STR: ${s.STR??""}`,`DEX: ${s.DEX??""}`,`CON: ${s.CON??""}`,`INT: ${s.INT??""}`,`WIS: ${s.WIS??""}`,`CHA: ${s.CHA??""}`,
+    `luck: 0`,`xp: ${m.xp}`,`gear_slots: ${m.gearSlots}`,`status: alive`,`created: ${opts.date}`,
+    "tags:","  - character","  - pc",`Melee: ${meleeFrontmatter(m)}`,`GP: ${m.gold}`,
+    `cover: "[[Portrait ${m.name}.PNG]]"`,"cssclasses:","  - cover-vertical-cover",`modifier: 0`,`current_HP: "${m.hp}"`,"---"].join("\n");
+
+  let ab="|     | Score | Mod |\n| --- | ----- | --- |\n";
+  ord.forEach(k=>{const v=s[k]; ab+=`| ${k} | ${v??""} | ${v!=null?SIGN(MOD(v)):""} |\n`;});
+
+  const atk=fmtAttacks(m,s);
+
+  const slots=Math.max(+m.gearSlots||20, m.gearFilled.length, 20);
+  const half=Math.ceil(slots/2);
+  let gt="| Slot # | Item | Slot # | Item |\n| --- | --- | --- | --- |\n";
+  for(let i=0;i<half;i++){const R=i+half;
+    gt+=`| ${i+1} | ${m.gearFilled[i]||""} | ${R+1} | ${R<slots?(m.gearFilled[R]||""):"---"} |\n`;}
+
+  const body=[`# ${m.name}`,`*${m.ancestry} ${m.cls} — Level ${m.level} ${m.alignment}*`,"",
+    `> **AC** ${m.ac} · **HP** ${m.hp}/${m.hp} · **Luck** 🍀 0 · **XP** ${m.xp}`,"",
+    "## Abilities",ab.trim(),"",
+    "## Attacks & weapons",atk,"",
+    "## Talents",m.talents.length?m.talents.map(t=>`- ${t}`).join("\n"):"- —","",
+    "## Spells",m.spells.length?m.spells.map(x=>`- ${x}`).join("\n"):"- —","",
+    `## Gear (slots: ${m.gearSlots})`,"",gt.trim(),"",
+    "## Languages",m.languages.length?m.languages.map(x=>`- ${x}`).join("\n"):"- —","",
+    "## Advancement",`- **XP:** ${m.xp} · **Next level:** roll HP, gain a talent on the level-up table.`,"",
+    "## Bonds / notes",`- Background: ${m.background||"—"}.`].join("\n");
+
+  const beh=opts.behavior?"\n\n"+scaffold():"";
+  return fm+"\n"+body+beh+"\n\n---\n[[Campaign Dashboard]] · [[Connection Lists]] · [[_SoloDark Quick Reference]]\n";
+}
+function scaffold(){return ["- Disposition: ","- Motivation: ","- Method: ","- Dynamics: ","",
+"Core Read","","- Concept: ","- Disposition: ","- Motivation: ","- Method: ","- Dynamic: ","- Party role: ","- Pressure point: ","",
+"Actionable Stances","","- Default vote: ","- In danger: ","- With treasure: ","- With NPCs: ","- With authority: ","- With weird/magic/evil: ","- When party argues: ","- When retreat is possible: ","",
+"DM Yourself Defaults","","- Always does: ","- Sometimes does: ","- Almost never does: ","- Dungeon default: ","- Social default: ","- Combat default: ","- Treasure default: ","",
+"Backstory-Light","","- Born/raised: ","- Early hardship: ","- Why adventuring: ","- Personal hook: ","- Trinket/mark: ","- Secret/shame: ","",
+"Override Trigger","","- Breaks pattern when: "].join("\n");}
+
+/* ============ UI wiring ============ */
+const $=id=>document.getElementById(id);
+let mode="json";
+const status=(msg,cls="")=>{const el=$("status");el.textContent=msg;el.className="status "+cls;};
+
+document.querySelectorAll(".tab").forEach(t=>{
+  const sel=()=>{
+    mode=t.dataset.mode;
+    document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected", x===t));
+    document.querySelectorAll("[data-pane]").forEach(p=>p.hidden = p.dataset.pane!==mode);
+    status("");
+  };
+  t.addEventListener("click",sel);
+  t.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sel();}});
+});
+
+/* file pickers + drag/drop */
+function wireDrop(dropId,inputId,onFile){
+  const drop=$(dropId),input=$(inputId);
+  drop.addEventListener("click",e=>{if(e.target.tagName!=="INPUT")input.click();});
+  input.addEventListener("change",()=>{if(input.files[0])onFile(input.files[0]);});
+  ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+  drop.addEventListener("drop",e=>{if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);});
+}
+wireDrop("jsonDrop","jsonFile",f=>{
+  $("jsonName").textContent=f.name;
+  const r=new FileReader(); r.onload=()=>{$("jsonIn").value=r.result; status("Loaded "+f.name+". Tap “Scribe the note”.","ok");}; r.readAsText(f);
+});
+wireDrop("pdfDrop","pdfFile",async f=>{
+  $("pdfName").textContent=f.name; status("Reading "+f.name+"…","warn");
+  try{
+    const buf=await f.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let txt="";
+    for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p);const c=await page.getTextContent();
+      txt+=c.items.map(i=>i.str).join(" ")+"\n";}
+    $("pdfText").value=txt.replace(/\s{3,}/g,"\n").trim();
+    status("Read "+pdf.numPages+" page(s). Review the extracted text, then Scribe.","ok");
+  }catch(err){status("Couldn’t read this PDF (it may be a scanned image). "+err.message,"err");}
+});
+
+/* convert */
+function currentModel(){
+  if(mode==="json"){
+    const raw=$("jsonIn").value.trim();
+    if(!raw) throw new Error("Paste or load a Shadowdarkling JSON export first.");
+    let j; try{j=JSON.parse(raw);}catch(e){throw new Error("That isn’t valid JSON — check for a missing brace or a truncated copy.");}
+    return fromJSON(j);
+  }
+  const src = mode==="pdf" ? $("pdfText").value : $("textIn").value;
+  if(!src.trim()) throw new Error(mode==="pdf"?"Load a PDF (with selectable text) first.":"Paste some sheet text first.");
+  return fromText(src);
+}
+$("convertBtn").addEventListener("click",()=>{
+  try{
+    const md=render(currentModel(),{behavior:$("behaviorChk").checked});
+    $("out").value=md;
+    status(mode==="json"?"Scribed. Exact mapping — review the italic notes below for fixed class features.":"Scribed a best-effort draft — check it against the sheet.", mode==="json"?"ok":"warn");
+  }catch(e){status(e.message,"err");}
+});
+
+/* copy / download */
+$("copyBtn").addEventListener("click",async()=>{
+  const v=$("out").value; if(!v){status("Nothing to copy yet.","warn");return;}
+  try{await navigator.clipboard.writeText(v);status("Copied to clipboard.","ok");}
+  catch{ $("out").select(); document.execCommand("copy"); status("Copied.","ok"); }
+});
+$("dlBtn").addEventListener("click",()=>{
+  const v=$("out").value; if(!v){status("Nothing to download yet.","warn");return;}
+  const name=(v.match(/^#\s*(.+)$/m)||[])[1]||"character";
+  const blob=new Blob([v],{type:"text/markdown"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/[^\w -]/g,"").trim()+".md";a.click();URL.revokeObjectURL(a.href);
+  status("Downloaded "+a.download,"ok");
+});
+
+/* optional AI refine (works inside claude.ai; degrades gracefully) */
+$("aiBtn").addEventListener("click",async()=>{
+  const src = mode==="json" ? $("jsonIn").value : (mode==="pdf" ? $("pdfText").value : $("textIn").value);
+  if(!src.trim()){status("Give me some input to refine first.","warn");return;}
+  status("Asking Claude to structure this…","warn"); $("aiBtn").disabled=true;
+  const template = $("out").value || "(the SoloDark character template shown in the app)";
+  const prompt = `Convert this Shadowdark character data into an Obsidian markdown note.
+Match EXACTLY this structure and frontmatter format (fill blanks you can infer, keep every talent's full description, leave a blank behavior scaffold):
+
+${sampleTemplate()}
+
+--- SOURCE DATA ---
+${src}
+
+Return ONLY the markdown note, no commentary, no code fences.`;
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,messages:[{role:"user",content:prompt}]})
+    });
+    if(!res.ok) throw new Error("status "+res.status);
+    const data=await res.json();
+    const out=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").replace(/^```[a-z]*\n?|```$/g,"").trim();
+    if(!out) throw new Error("empty response");
+    $("out").value=out; status("Refined with AI. Review before saving.","ok");
+  }catch(err){
+    status("AI refine only runs inside claude.ai. Self-hosted, use the deterministic “Scribe” button (or paste the data to Claude in chat). ["+err.message+"]","warn");
+  }finally{$("aiBtn").disabled=false;}
+});
+function sampleTemplate(){return render(fromJSON({name:"Example",ancestry:"Dwarf",class:"Fighter",level:1,title:"Squire",alignment:"Lawful",background:"Soldier",deity:"—",armorClass:15,maxHitPoints:8,XP:0,gearSlotsTotal:10,stats:{STR:14,DEX:12,CON:13,INT:9,WIS:10,CHA:8},gear:[],languages:"Common",spellsKnown:""}),{behavior:true});}
+</script>
+</body>
+</html>
